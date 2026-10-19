@@ -1,0 +1,614 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Calco</title>
+<meta name="description" content="Aprende a dibujar calcando: la cámara muestra tu hoja y encima la imagen semitransparente.">
+<meta name="theme-color" content="#16171b">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Calco">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-192.png">
+<style>
+/* Layout: inicio desplazable tipo cuaderno; editor a pantalla completa con la cámara de fondo y controles flotantes. */
+:root{
+  --graphite:#16171b;
+  --graphite-2:#212329;
+  --line:#34373f;
+  --paper:#f3efe6;
+  --ink:#e9e7e1;
+  --muted:#9a9ca4;
+  --lead:#f2c14e;      /* amarillo lápiz */
+  --lead-ink:#1b1606;
+  --danger:#ff7a6b;
+  --r:14px;
+  --font:-apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+  --display:ui-rounded, "SF Pro Rounded", -apple-system, "Segoe UI", sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--graphite);color:var(--ink);font-family:var(--font);font-size:15px}
+[hidden]{display:none!important}
+button,label.btn{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--lead);outline-offset:2px}
+
+/* ---------- Inicio ---------- */
+#home{
+  min-height:100%;
+  padding-top:max(28px, env(safe-area-inset-top));
+  padding-bottom:max(28px, env(safe-area-inset-bottom));
+  padding-left:max(18px, env(safe-area-inset-left));
+  padding-right:max(18px, env(safe-area-inset-right));
+  max-width:620px;margin:0 auto;
+  display:flex;flex-direction:column;gap:28px;
+}
+.brand{display:flex;align-items:center;gap:12px}
+.brand svg{width:44px;height:44px;flex:none}
+.brand h1{font-family:var(--display);font-size:34px;letter-spacing:-.5px;margin:0;font-weight:800}
+.lede{color:var(--muted);margin:6px 0 0;line-height:1.45;max-width:46ch}
+.actions{display:grid;gap:10px}
+.btn{
+  display:flex;align-items:center;justify-content:center;gap:10px;
+  min-height:54px;padding:0 18px;border-radius:var(--r);border:1px solid var(--line);
+  background:var(--graphite-2);font-weight:600;font-size:16px;text-align:center;cursor:pointer;
+}
+.btn.primary{background:var(--lead);color:var(--lead-ink);border-color:var(--lead)}
+.btn svg{width:22px;height:22px;flex:none}
+.sr{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+h2{font-size:13px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin:0 0 12px;font-weight:600}
+.examples{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.ex{
+  border:0;padding:0;background:var(--paper);border-radius:12px;aspect-ratio:1;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;position:relative;
+}
+.ex img{width:78%;height:78%;object-fit:contain;margin-bottom:12px}
+.ex span{position:absolute;bottom:5px;left:0;right:0;font-size:11px;color:#5d5a52;font-weight:600}
+.steps{list-style:none;margin:0;padding:0;display:grid;gap:12px;counter-reset:s}
+.steps li{display:grid;grid-template-columns:30px 1fr;gap:12px;align-items:start;line-height:1.45;color:var(--ink)}
+.steps li::before{
+  counter-increment:s;content:counter(s);
+  width:30px;height:30px;border-radius:50%;border:1.5px solid var(--lead);color:var(--lead);
+  display:grid;place-items:center;font-weight:700;font-size:14px;
+}
+.steps b{display:block}
+.steps small{color:var(--muted);font-size:14px}
+.note{font-size:13px;color:var(--muted);line-height:1.5;border-top:1px solid var(--line);padding-top:16px}
+
+/* ---------- Editor ---------- */
+#stage{position:fixed;inset:0;overflow:hidden;background:#000;touch-action:none;user-select:none;-webkit-user-select:none}
+#stage.light{background:#fff}
+#video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+#stage.light #video{display:none}
+#gest{position:absolute;inset:0;touch-action:none}
+#ov{position:absolute;left:50%;top:50%;transform-origin:50% 50%;pointer-events:none;will-change:transform,opacity}
+#camMsg{
+  position:absolute;left:50%;top:40%;transform:translate(-50%,-50%);width:min(86%,360px);
+  background:rgba(22,23,27,.92);border:1px solid var(--line);border-radius:var(--r);padding:18px;text-align:center;line-height:1.45;
+  display:grid;gap:12px;
+}
+#camMsg p{margin:0}
+
+.bar{
+  position:absolute;left:0;right:0;display:flex;gap:8px;align-items:center;
+  padding-left:max(12px, env(safe-area-inset-left));padding-right:max(12px, env(safe-area-inset-right));
+}
+#top{top:0;padding-top:max(10px, env(safe-area-inset-top));padding-bottom:10px;
+  background:linear-gradient(rgba(0,0,0,.55),rgba(0,0,0,0))}
+.spacer{flex:1}
+.ic{
+  width:44px;height:44px;border-radius:12px;border:0;display:grid;place-items:center;
+  background:rgba(22,23,27,.72);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+}
+.ic svg{width:22px;height:22px}
+.ic.on{background:var(--lead);color:var(--lead-ink)}
+.seg{display:flex;background:rgba(22,23,27,.72);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-radius:12px;padding:3px}
+.seg button{border:0;background:transparent;padding:0 12px;height:38px;border-radius:9px;font-weight:600;font-size:14px;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--graphite)}
+
+#panel{
+  position:absolute;left:0;right:0;bottom:0;
+  padding:14px max(14px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
+  background:rgba(22,23,27,.86);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  border-top:1px solid rgba(255,255,255,.06);border-radius:18px 18px 0 0;
+  display:grid;gap:12px;max-width:640px;margin:0 auto;
+}
+.row{display:flex;align-items:center;gap:12px}
+.row label{font-size:13px;color:var(--muted);width:78px;flex:none}
+.row output{font-variant-numeric:tabular-nums;font-size:13px;width:40px;text-align:right;flex:none}
+input[type=range]{flex:1;min-width:0;accent-color:var(--lead);height:30px}
+.seg.full{width:100%;background:rgba(255,255,255,.06)}
+.seg.full button{flex:1}
+.chips{display:flex;gap:8px;flex:none}
+.chip{width:26px;height:26px;border-radius:50%;border:2px solid rgba(255,255,255,.25);padding:0}
+.chip[aria-pressed="true"]{border-color:var(--lead);box-shadow:0 0 0 2px var(--lead)}
+.tools{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.tool{border:0;background:transparent;display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 0;border-radius:10px;font-size:11px;color:var(--muted)}
+.tool svg{width:24px;height:24px;color:var(--ink)}
+.tool.on{color:var(--lead)}
+.tool.on svg{color:var(--lead)}
+
+#showUi{position:absolute;right:max(12px, env(safe-area-inset-right));bottom:max(14px, env(safe-area-inset-bottom));opacity:.55}
+#lockBadge{
+  position:absolute;left:50%;top:max(64px, calc(env(safe-area-inset-top) + 58px));transform:translateX(-50%);
+  background:rgba(22,23,27,.8);padding:6px 12px;border-radius:99px;font-size:12px;display:flex;gap:6px;align-items:center;pointer-events:none
+}
+#lockBadge svg{width:14px;height:14px}
+#toast{
+  position:fixed;left:50%;top:max(70px, calc(env(safe-area-inset-top) + 64px));transform:translate(-50%,-10px);
+  background:var(--ink);color:var(--graphite);padding:10px 16px;border-radius:99px;font-weight:600;font-size:14px;
+  opacity:0;transition:opacity .2s, transform .2s;pointer-events:none;z-index:9;max-width:90%;text-align:center
+}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+@media (prefers-reduced-motion:reduce){#toast{transition:none}}
+</style>
+</head>
+<body>
+
+<!-- ===== INICIO ===== -->
+<main id="home">
+  <header>
+    <div class="brand">
+      <svg viewBox="0 0 48 48" aria-hidden="true"><rect width="48" height="48" rx="12" fill="#f3efe6"/><path d="M33 15a12 12 0 1 0 0 18" fill="none" stroke="#16171b" stroke-width="4" stroke-linecap="round"/><path d="M33 15a12 12 0 1 0 0 18" fill="none" stroke="#f2c14e" stroke-width="4" stroke-linecap="round" stroke-dasharray="3 6" transform="translate(2 2)" opacity=".9"/></svg>
+      <h1>Calco</h1>
+    </div>
+    <p class="lede">Elige una imagen, apunta la cámara a tu cuaderno y repasa las líneas que ves en la pantalla.</p>
+  </header>
+
+  <section class="actions">
+    <label class="btn primary" for="fileGal">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="9" cy="9" r="2"/><path d="m21 15-5-5L5 21"/></svg>
+      Elegir imagen de mi galería
+    </label>
+    <input class="sr" id="fileGal" type="file" accept="image/*">
+    <label class="btn" for="fileCam">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>
+      Tomar una foto para calcar
+    </label>
+    <input class="sr" id="fileCam" type="file" accept="image/*" capture="environment">
+  </section>
+
+  <section>
+    <h2>Practica con un ejemplo</h2>
+    <div class="examples" id="examples"></div>
+  </section>
+
+  <section>
+    <h2>Cómo se usa</h2>
+    <ol class="steps">
+      <li><div><b>Sostén el celular sobre la hoja</b><small>Apóyalo en un vaso, una pila de libros o un soporte, a unos 25–30 cm del papel.</small></div></li>
+      <li><div><b>Acomoda la imagen</b><small>Arrastra con un dedo. Con dos dedos la agrandas, achicas o giras. Luego toca el candado para que no se mueva.</small></div></li>
+      <li><div><b>Baja la opacidad y dibuja</b><small>Mira la pantalla y sigue las líneas con el lápiz sobre el papel real.</small></div></li>
+    </ol>
+  </section>
+
+  <p class="note">Sin soporte a mano, usa el modo <b>Luz</b>: la pantalla se pone blanca con la imagen, pones una hoja delgada encima del celular y calcas a contraluz. Sube el brillo al máximo.<br><br>Para tenerla como app: en Safari toca Compartir → <b>Agregar a pantalla de inicio</b>.</p>
+</main>
+
+<!-- ===== EDITOR ===== -->
+<section id="stage" hidden>
+  <video id="video" playsinline muted autoplay></video>
+  <div id="gest"></div>
+  <canvas id="ov"></canvas>
+
+  <div id="camMsg" hidden>
+    <p id="camMsgText"></p>
+    <button class="btn primary" id="toLight" type="button">Usar modo Luz</button>
+    <button class="btn" id="retryCam" type="button">Reintentar cámara</button>
+  </div>
+
+  <div id="lockBadge" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>Imagen bloqueada</div>
+
+  <div class="bar ui" id="top">
+    <button class="ic" id="back" type="button" aria-label="Volver">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+    </button>
+    <div class="seg" role="group" aria-label="Modo">
+      <button type="button" id="mCam" aria-pressed="true">Cámara</button>
+      <button type="button" id="mLight" aria-pressed="false">Luz</button>
+    </div>
+    <span class="spacer"></span>
+    <button class="ic" id="torch" type="button" aria-label="Linterna" hidden>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2h8v5l-2 4v11h-4V11L8 7z"/><path d="M8 7h8"/></svg>
+    </button>
+    <button class="ic" id="hideUi" type="button" aria-label="Ocultar controles">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l18 18"/><path d="M10.6 5.1A10 10 0 0 1 12 5c6 0 10 7 10 7a17 17 0 0 1-3.2 3.9M6.1 6.1C3.5 7.9 2 12 2 12s4 7 10 7a9.6 9.6 0 0 0 5-1.4"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>
+    </button>
+  </div>
+
+  <div class="ui" id="panel">
+    <div class="row">
+      <label for="opacity">Opacidad</label>
+      <input type="range" id="opacity" min="5" max="100" value="50">
+      <output id="opacityOut">50%</output>
+    </div>
+    <div class="seg full" role="group" aria-label="Estilo de la imagen">
+      <button type="button" data-mode="foto" aria-pressed="false">Foto</button>
+      <button type="button" data-mode="trazo" aria-pressed="true">Trazo</button>
+      <button type="button" data-mode="bordes" aria-pressed="false">Bordes</button>
+    </div>
+    <div class="row" id="intRow">
+      <label for="intensity">Intensidad</label>
+      <input type="range" id="intensity" min="0" max="100" value="45">
+      <div class="chips" role="group" aria-label="Color de línea">
+        <button class="chip" type="button" data-color="#111111" style="background:#111" aria-label="Negro" aria-pressed="true"></button>
+        <button class="chip" type="button" data-color="#e8402f" style="background:#e8402f" aria-label="Rojo" aria-pressed="false"></button>
+        <button class="chip" type="button" data-color="#1f6fff" style="background:#1f6fff" aria-label="Azul" aria-pressed="false"></button>
+        <button class="chip" type="button" data-color="#ffffff" style="background:#fff" aria-label="Blanco" aria-pressed="false"></button>
+      </div>
+    </div>
+    <div class="tools">
+      <button class="tool" id="lock" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path id="lockShackle" d="M8 11V7a4 4 0 0 1 7.5-2"/></svg>
+        <span>Bloquear</span>
+      </button>
+      <button class="tool" id="flip" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18"/><path d="M8 7 3 17h5z"/><path d="M16 7l5 10h-5z"/></svg>
+        <span>Espejo</span>
+      </button>
+      <button class="tool" id="grid" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M15 3v18M3 9h18M3 15h18"/></svg>
+        <span>Cuadrícula</span>
+      </button>
+      <button class="tool" id="rot90" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg>
+        <span>Girar 90°</span>
+      </button>
+      <button class="tool" id="center" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg>
+        <span>Centrar</span>
+      </button>
+    </div>
+  </div>
+
+  <button class="ic" id="showUi" type="button" aria-label="Mostrar controles" hidden>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>
+  </button>
+</section>
+
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(() => {
+'use strict';
+const $ = s => document.querySelector(s);
+const home = $('#home'), stage = $('#stage'), video = $('#video'), ov = $('#ov'), gest = $('#gest');
+const ctx = ov.getContext('2d', { willReadFrequently: true });
+
+const st = {
+  x: 0, y: 0, s: 1, r: 0, flip: false, locked: false,
+  opacity: 50, mode: 'trazo', intensity: 45, color: '#111111', grid: false, light: false, ui: true
+};
+let src = null;        // imagen original
+let stream = null, wakeLock = null, torchOn = false;
+
+/* ---------- utilidades ---------- */
+let toastT;
+function toast(msg) {
+  const t = $('#toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 1800);
+}
+function save() { try { localStorage.setItem('calco', JSON.stringify({ opacity: st.opacity, color: st.color })); } catch (e) {} }
+try { Object.assign(st, JSON.parse(localStorage.getItem('calco') || '{}')); } catch (e) {}
+
+/* ---------- ejemplos (dibujos de línea en SVG) ---------- */
+const svgWrap = body => `<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="1000" viewBox="0 0 400 400" fill="none" stroke="#111" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">${body}</svg>`;
+function spiral() {
+  let d = 'M200 200';
+  for (let t = 0; t <= Math.PI * 12; t += 0.12) {
+    const r = 4 + t * 4.4;
+    d += ` L${(200 + r * Math.cos(t)).toFixed(1)} ${(200 + r * Math.sin(t)).toFixed(1)}`;
+  }
+  return `<path d="${d}"/>`;
+}
+const petals = [0, 60, 120, 180, 240, 300].map(a => `<ellipse cx="200" cy="88" rx="26" ry="44" transform="rotate(${a} 200 150)"/>`).join('');
+const EXAMPLES = [
+  { name: 'Líneas', svg: svgWrap('<path d="M40 50H360M40 95H360M40 140H360"/><path d="M60 175V265M116 175V265M172 175V265M228 175V265M284 175V265M340 175V265"/><path d="M40 360L80 295L120 360L160 295L200 360L240 295L280 360L320 295L360 360"/>') },
+  { name: 'Círculos', svg: svgWrap('<circle cx="110" cy="110" r="65"/><circle cx="290" cy="110" r="65"/><circle cx="290" cy="110" r="32"/><ellipse cx="200" cy="290" rx="160" ry="70"/><ellipse cx="200" cy="290" rx="80" ry="34"/>') },
+  { name: 'Espiral', svg: svgWrap(spiral()) },
+  { name: 'Cubo', svg: svgWrap('<path d="M90 150H250V310H90Z"/><path d="M150 90H310V250H150Z" stroke-dasharray="0"/><path d="M90 150L150 90M250 150L310 90M250 310L310 250M90 310L150 250"/>') },
+  { name: 'Flor', svg: svgWrap(petals + '<circle cx="200" cy="150" r="28"/><path d="M200 178C194 250 206 300 200 385"/><path d="M200 305C238 272 278 282 304 258C284 302 240 314 200 305Z"/><path d="M200 335C165 310 130 318 104 300C126 338 168 345 200 335Z"/>') },
+  { name: 'Pez', svg: svgWrap('<path d="M60 200C125 105 270 105 320 200C270 295 125 295 60 200Z"/><path d="M320 200L380 145L368 200L380 255Z"/><circle cx="122" cy="186" r="9"/><path d="M160 145C182 178 182 222 160 255"/><path d="M200 122C218 92 258 96 270 138"/><path d="M205 278C222 300 250 300 262 268"/><path d="M200 175Q215 190 200 205M230 175Q245 190 230 205M260 175Q275 190 260 205M215 205Q230 220 215 235M245 205Q260 220 245 235M215 145Q230 160 215 175M245 145Q260 160 245 175"/>') },
+  { name: 'Taza', svg: svgWrap('<ellipse cx="180" cy="135" rx="100" ry="25"/><path d="M80 135L100 300C112 330 248 330 260 300L280 135"/><path d="M272 175C352 165 352 272 262 262"/><path d="M40 318C40 352 320 352 320 318"/><path d="M150 95C135 75 165 60 150 38M200 95C185 75 215 60 200 38"/>') },
+  { name: 'Hoja', svg: svgWrap('<path d="M200 365C60 280 80 110 200 30C320 110 340 280 200 365Z"/><path d="M200 395V60"/><path d="M200 300L140 250M200 300L260 250M200 230L130 180M200 230L270 180M200 160L150 118M200 160L250 118"/>') }
+];
+const exWrap = $('#examples');
+EXAMPLES.forEach(ex => {
+  const url = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(ex.svg);
+  const b = document.createElement('button');
+  b.type = 'button'; b.className = 'ex';
+  b.innerHTML = `<img alt="" src="${url}"><span>${ex.name}</span>`;
+  b.addEventListener('click', () => loadImage(url, 'trazo'));
+  exWrap.appendChild(b);
+});
+
+/* ---------- carga de imagen ---------- */
+function onFile(e) {
+  const f = e.target.files && e.target.files[0];
+  e.target.value = '';
+  if (!f) return;
+  loadImage(URL.createObjectURL(f), 'foto');
+}
+$('#fileGal').addEventListener('change', onFile);
+$('#fileCam').addEventListener('change', onFile);
+
+function loadImage(url, mode) {
+  const img = new Image();
+  img.onload = () => { src = img; st.mode = mode; openStage(); };
+  img.onerror = () => toast('No se pudo abrir esa imagen');
+  img.src = url;
+}
+
+/* ---------- procesamiento ---------- */
+const MAX = 1400;
+let work = null; // ImageData de la imagen escalada (para no redibujar el original)
+function prepare() {
+  const k = Math.min(1, MAX / Math.max(src.naturalWidth, src.naturalHeight));
+  ov.width = Math.max(1, Math.round(src.naturalWidth * k));
+  ov.height = Math.max(1, Math.round(src.naturalHeight * k));
+  ctx.clearRect(0, 0, ov.width, ov.height);
+  ctx.drawImage(src, 0, 0, ov.width, ov.height);
+  try { work = ctx.getImageData(0, 0, ov.width, ov.height); }
+  catch (e) { work = null; st.mode = 'foto'; toast('Esta imagen solo se puede mostrar como Foto'); }
+}
+function hexRgb(h) { const n = parseInt(h.slice(1), 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; }
+
+function render() {
+  if (!work) { ctx.clearRect(0, 0, ov.width, ov.height); ctx.drawImage(src, 0, 0, ov.width, ov.height); return; }
+  const w = ov.width, h = ov.height, n = w * h, s = work.data;
+  if (st.mode === 'foto') {
+    ctx.putImageData(work, 0, 0);
+  } else {
+    const out = ctx.createImageData(w, h), o = out.data;
+    const [cr, cg, cb] = hexRgb(st.color);
+    const gray = new Float32Array(n);
+    for (let i = 0, p = 0; i < n; i++, p += 4) {
+      // fondo transparente cuenta como blanco
+      const a = s[p + 3] / 255;
+      gray[i] = (0.299 * s[p] + 0.587 * s[p + 1] + 0.114 * s[p + 2]) * a + 255 * (1 - a);
+    }
+    let alpha;
+    if (st.mode === 'trazo') {
+      const gain = 0.6 + st.intensity / 18, thr = 18;
+      alpha = i => (255 - gray[i] - thr) * gain;
+    } else {
+      // suavizado 3x3 + Sobel
+      const b = new Float32Array(n);
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+        let sum = 0, c = 0;
+        for (let dy = -1; dy <= 1; dy++) { const yy = y + dy; if (yy < 0 || yy >= h) continue;
+          for (let dx = -1; dx <= 1; dx++) { const xx = x + dx; if (xx < 0 || xx >= w) continue; sum += gray[yy * w + xx]; c++; } }
+        b[y * w + x] = sum / c;
+      }
+      const m = new Float32Array(n);
+      for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) {
+        const i = y * w + x;
+        const gx = -b[i - w - 1] - 2 * b[i - 1] - b[i + w - 1] + b[i - w + 1] + 2 * b[i + 1] + b[i + w + 1];
+        const gy = -b[i - w - 1] - 2 * b[i - w] - b[i - w + 1] + b[i + w - 1] + 2 * b[i + w] + b[i + w + 1];
+        m[i] = Math.sqrt(gx * gx + gy * gy);
+      }
+      const thr = 150 - st.intensity * 1.2, gain = 2.2;
+      alpha = i => (m[i] - thr) * gain;
+    }
+    for (let i = 0, p = 0; i < n; i++, p += 4) {
+      const a = alpha(i);
+      o[p] = cr; o[p + 1] = cg; o[p + 2] = cb; o[p + 3] = a < 0 ? 0 : a > 255 ? 255 : a;
+    }
+    ctx.putImageData(out, 0, 0);
+  }
+  if (st.grid) drawGrid(w, h);
+}
+function drawGrid(w, h) {
+  const cells = 6, step = Math.max(w, h) / cells;
+  ctx.save();
+  ctx.lineWidth = Math.max(1.5, Math.max(w, h) / 500);
+  ctx.strokeStyle = st.color === '#1f6fff' ? 'rgba(232,64,47,.75)' : 'rgba(31,111,255,.75)';
+  ctx.beginPath();
+  for (let x = step; x < w - 1; x += step) { ctx.moveTo(x, 0); ctx.lineTo(x, h); }
+  for (let y = step; y < h - 1; y += step) { ctx.moveTo(0, y); ctx.lineTo(w, y); }
+  ctx.rect(1, 1, w - 2, h - 2);
+  ctx.stroke();
+  ctx.restore();
+}
+let rq = 0;
+function scheduleRender() { if (rq) return; rq = requestAnimationFrame(() => { rq = 0; render(); }); }
+
+/* ---------- transformaciones ---------- */
+function fit() {
+  const vw = innerWidth, vh = innerHeight;
+  const ar = ov.width / ov.height;
+  let w = vw * 0.86, hgt = w / ar;
+  if (hgt > vh * 0.62) { hgt = vh * 0.62; w = hgt * ar; }
+  ov.style.width = w + 'px'; ov.style.height = hgt + 'px';
+  ov.style.marginLeft = -w / 2 + 'px'; ov.style.marginTop = -hgt / 2 + 'px';
+}
+function applyT() {
+  ov.style.transform = `translate(${st.x}px, ${st.y}px) rotate(${st.r}rad) scale(${st.flip ? -st.s : st.s}, ${st.s})`;
+  ov.style.opacity = st.opacity / 100;
+}
+function resetPos() { st.x = 0; st.y = st.ui ? -60 : 0; st.s = 1; st.r = 0; applyT(); }
+
+/* gestos: 1 dedo mueve, 2 dedos escalan y giran */
+const ptrs = new Map();
+let g0 = null;
+function snapshot() {
+  const pts = [...ptrs.values()];
+  if (pts.length === 1) return { mode: 1, px: pts[0].x, py: pts[0].y, x: st.x, y: st.y };
+  const [a, b] = pts;
+  return {
+    mode: 2, x: st.x, y: st.y, s: st.s, r: st.r,
+    d: Math.hypot(b.x - a.x, b.y - a.y) || 1, ang: Math.atan2(b.y - a.y, b.x - a.x),
+    mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2
+  };
+}
+gest.addEventListener('pointerdown', e => {
+  if (st.locked) { if (ptrs.size === 0) toast('Imagen bloqueada · toca el candado para moverla'); return; }
+  gest.setPointerCapture(e.pointerId);
+  ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (ptrs.size <= 2) g0 = snapshot();
+});
+gest.addEventListener('pointermove', e => {
+  if (!ptrs.has(e.pointerId) || st.locked) return;
+  ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  const pts = [...ptrs.values()];
+  if (!g0) return;
+  if (g0.mode === 1 && pts.length === 1) {
+    st.x = g0.x + pts[0].x - g0.px; st.y = g0.y + pts[0].y - g0.py;
+  } else if (g0.mode === 2 && pts.length >= 2) {
+    const [a, b] = pts;
+    const d = Math.hypot(b.x - a.x, b.y - a.y), ang = Math.atan2(b.y - a.y, b.x - a.x);
+    st.s = Math.min(12, Math.max(0.1, g0.s * d / g0.d));
+    st.r = g0.r + (ang - g0.ang);
+    st.x = g0.x + (a.x + b.x) / 2 - g0.mx; st.y = g0.y + (a.y + b.y) / 2 - g0.my;
+  }
+  applyT();
+});
+function endPtr(e) {
+  if (!ptrs.delete(e.pointerId)) return;
+  g0 = ptrs.size ? snapshot() : null;
+}
+gest.addEventListener('pointerup', endPtr);
+gest.addEventListener('pointercancel', endPtr);
+document.addEventListener('gesturestart', e => e.preventDefault());
+document.addEventListener('dblclick', e => e.preventDefault(), { passive: false });
+
+/* ---------- cámara ---------- */
+async function startCamera() {
+  hideCamMsg();
+  if (stream) { video.play().catch(() => {}); return; }
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    showCamMsg('Este navegador no permite usar la cámara aquí. Abre la app desde Safari con una dirección https://.');
+    return;
+  }
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      audio: false,
+      video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } }
+    });
+    if (st.light || stage.hidden) { stopCamera(); return; }
+    video.srcObject = stream;
+    await video.play().catch(() => {});
+    setupTorch();
+  } catch (err) {
+    stream = null;
+    const denied = err && (err.name === 'NotAllowedError' || err.name === 'SecurityError');
+    showCamMsg(denied
+      ? 'No hay permiso para usar la cámara. En iPhone: Ajustes → Safari → Cámara → Permitir, y vuelve a intentarlo.'
+      : 'No se pudo encender la cámara.');
+  }
+}
+function stopCamera() {
+  if (stream) stream.getTracks().forEach(t => t.stop());
+  stream = null; video.srcObject = null; torchOn = false;
+  $('#torch').hidden = true; $('#torch').classList.remove('on');
+}
+function showCamMsg(t) { $('#camMsgText').textContent = t; $('#camMsg').hidden = false; }
+function hideCamMsg() { $('#camMsg').hidden = true; }
+function setupTorch() {
+  const track = stream && stream.getVideoTracks()[0];
+  const caps = track && track.getCapabilities ? track.getCapabilities() : {};
+  $('#torch').hidden = !caps.torch;
+}
+$('#torch').addEventListener('click', async () => {
+  const track = stream && stream.getVideoTracks()[0];
+  if (!track) return;
+  try {
+    await track.applyConstraints({ advanced: [{ torch: !torchOn }] });
+    torchOn = !torchOn; $('#torch').classList.toggle('on', torchOn);
+  } catch (e) { toast('La linterna no está disponible'); }
+});
+$('#retryCam').addEventListener('click', startCamera);
+$('#toLight').addEventListener('click', () => setLight(true));
+
+/* pantalla siempre encendida */
+async function keepAwake() {
+  try { if ('wakeLock' in navigator && !wakeLock) { wakeLock = await navigator.wakeLock.request('screen'); wakeLock.addEventListener('release', () => { wakeLock = null; }); } } catch (e) {}
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState !== 'visible' || stage.hidden) return;
+  keepAwake();
+  if (!st.light) {
+    const t = stream && stream.getVideoTracks()[0];
+    if (t && t.readyState === 'ended') { stream = null; }
+    startCamera();
+  }
+});
+
+/* ---------- modos ---------- */
+function setLight(on) {
+  st.light = on;
+  stage.classList.toggle('light', on);
+  $('#mCam').setAttribute('aria-pressed', String(!on));
+  $('#mLight').setAttribute('aria-pressed', String(on));
+  if (on) {
+    stopCamera(); hideCamMsg();
+    if (st.opacity < 70) { st.opacity = 100; syncControls(); applyT(); }
+    toast('Sube el brillo al máximo y pon la hoja encima');
+  } else {
+    startCamera();
+  }
+}
+$('#mCam').addEventListener('click', () => setLight(false));
+$('#mLight').addEventListener('click', () => setLight(true));
+
+function openStage() {
+  home.hidden = true; stage.hidden = false;
+  prepare(); fit(); render();
+  setUi(true); resetPos(); syncControls();
+  if (st.light) setLight(true); else startCamera();
+  keepAwake();
+}
+$('#back').addEventListener('click', () => {
+  stopCamera();
+  if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; }
+  stage.hidden = true; home.hidden = false;
+  st.locked = false; syncControls();
+});
+
+/* ---------- controles ---------- */
+function syncControls() {
+  $('#opacity').value = st.opacity; $('#opacityOut').textContent = st.opacity + '%';
+  $('#intensity').value = st.intensity;
+  document.querySelectorAll('[data-mode]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mode === st.mode)));
+  document.querySelectorAll('[data-color]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.color === st.color)));
+  $('#intRow').hidden = st.mode === 'foto';
+  $('#lock').classList.toggle('on', st.locked);
+  $('#lock span').textContent = st.locked ? 'Bloqueada' : 'Bloquear';
+  $('#lockShackle').setAttribute('d', st.locked ? 'M8 11V7a4 4 0 0 1 8 0v4' : 'M8 11V7a4 4 0 0 1 7.5-2');
+  $('#lockBadge').hidden = !st.locked || !st.ui;
+  $('#flip').classList.toggle('on', st.flip);
+  $('#grid').classList.toggle('on', st.grid);
+}
+$('#opacity').addEventListener('input', e => { st.opacity = +e.target.value; $('#opacityOut').textContent = st.opacity + '%'; applyT(); save(); });
+$('#intensity').addEventListener('input', e => { st.intensity = +e.target.value; scheduleRender(); });
+document.querySelectorAll('[data-mode]').forEach(b => b.addEventListener('click', () => { st.mode = b.dataset.mode; syncControls(); scheduleRender(); }));
+document.querySelectorAll('[data-color]').forEach(b => b.addEventListener('click', () => { st.color = b.dataset.color; syncControls(); scheduleRender(); save(); }));
+$('#lock').addEventListener('click', () => { st.locked = !st.locked; ptrs.clear(); g0 = null; syncControls(); toast(st.locked ? 'Imagen bloqueada' : 'Ya puedes mover la imagen'); });
+$('#flip').addEventListener('click', () => { st.flip = !st.flip; applyT(); syncControls(); });
+$('#grid').addEventListener('click', () => { st.grid = !st.grid; syncControls(); scheduleRender(); });
+$('#rot90').addEventListener('click', () => { st.r = Math.round((st.r + Math.PI / 2) / (Math.PI / 2)) * (Math.PI / 2); applyT(); });
+$('#center').addEventListener('click', () => { if (st.locked) { toast('Desbloquea la imagen primero'); return; } resetPos(); });
+
+function setUi(on) {
+  st.ui = on;
+  document.querySelectorAll('#stage .ui').forEach(el => el.hidden = !on);
+  $('#showUi').hidden = on;
+  syncControls();
+}
+$('#hideUi').addEventListener('click', () => setUi(false));
+$('#showUi').addEventListener('click', () => setUi(true));
+
+addEventListener('resize', () => { if (!stage.hidden && work) fit(); });
+
+/* ---------- PWA ---------- */
+if ('serviceWorker' in navigator && location.protocol === 'https:') {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+})();
+</script>
+</body>
+</html>
