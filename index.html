@@ -24,7 +24,6 @@
   --muted:#9a9ca4;
   --lead:#f2c14e;      /* amarillo lápiz */
   --lead-ink:#1b1606;
-  --danger:#ff7a6b;
   --r:14px;
   --font:-apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
   --display:ui-rounded, "SF Pro Rounded", -apple-system, "Segoe UI", sans-serif;
@@ -82,10 +81,20 @@ h2{font-size:13px;text-transform:uppercase;letter-spacing:.12em;color:var(--mute
 /* ---------- Editor ---------- */
 #stage{position:fixed;inset:0;overflow:hidden;background:#000;touch-action:none;user-select:none;-webkit-user-select:none}
 #stage.light{background:#fff}
+#world{position:absolute;inset:0;transform-origin:0 0}
 #video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 #stage.light #video{display:none}
+#ov{position:absolute;left:0;top:0;transform-origin:0 0;pointer-events:none;will-change:transform,opacity}
+#stage.peek #ov{visibility:hidden}
 #gest{position:absolute;inset:0;touch-action:none}
-#ov{position:absolute;left:50%;top:50%;transform-origin:50% 50%;pointer-events:none;will-change:transform,opacity}
+#quad{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible}
+#quad polygon{fill:none;stroke:var(--lead);stroke-width:2;stroke-dasharray:6 6}
+.handle{
+  position:absolute;left:0;top:0;width:44px;height:44px;margin:-22px 0 0 -22px;border-radius:50%;
+  border:0;padding:0;background:transparent;touch-action:none;display:grid;place-items:center
+}
+.handle::after{content:"";width:22px;height:22px;border-radius:50%;background:var(--lead);border:3px solid var(--graphite);box-shadow:0 1px 6px rgba(0,0,0,.5)}
+
 #camMsg{
   position:absolute;left:50%;top:40%;transform:translate(-50%,-50%);width:min(86%,360px);
   background:rgba(22,23,27,.92);border:1px solid var(--line);border-radius:var(--r);padding:18px;text-align:center;line-height:1.45;
@@ -101,8 +110,9 @@ h2{font-size:13px;text-transform:uppercase;letter-spacing:.12em;color:var(--mute
   background:linear-gradient(rgba(0,0,0,.55),rgba(0,0,0,0))}
 .spacer{flex:1}
 .ic{
-  width:44px;height:44px;border-radius:12px;border:0;display:grid;place-items:center;
+  min-width:44px;height:44px;border-radius:12px;border:0;display:grid;place-items:center;padding:0 10px;
   background:rgba(22,23,27,.72);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  font-weight:700;font-size:14px;
 }
 .ic svg{width:22px;height:22px}
 .ic.on{background:var(--lead);color:var(--lead-ink)}
@@ -112,10 +122,10 @@ h2{font-size:13px;text-transform:uppercase;letter-spacing:.12em;color:var(--mute
 
 #panel{
   position:absolute;left:0;right:0;bottom:0;
-  padding:14px max(14px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
+  padding:12px max(14px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
   background:rgba(22,23,27,.86);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
   border-top:1px solid rgba(255,255,255,.06);border-radius:18px 18px 0 0;
-  display:grid;gap:12px;max-width:640px;margin:0 auto;
+  display:grid;gap:10px;max-width:640px;margin:0 auto;
 }
 .row{display:flex;align-items:center;gap:12px}
 .row label{font-size:13px;color:var(--muted);width:78px;flex:none}
@@ -126,22 +136,44 @@ input[type=range]{flex:1;min-width:0;accent-color:var(--lead);height:30px}
 .chips{display:flex;gap:8px;flex:none}
 .chip{width:26px;height:26px;border-radius:50%;border:2px solid rgba(255,255,255,.25);padding:0}
 .chip[aria-pressed="true"]{border-color:var(--lead);box-shadow:0 0 0 2px var(--lead)}
-.tools{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
-.tool{border:0;background:transparent;display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 0;border-radius:10px;font-size:11px;color:var(--muted)}
+.tools{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;margin:0 -6px;touch-action:pan-x}
+.tools::-webkit-scrollbar{display:none}
+.tool{flex:0 0 68px;border:0;background:transparent;display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 0;border-radius:10px;font-size:11px;color:var(--muted)}
 .tool svg{width:24px;height:24px;color:var(--ink)}
 .tool.on{color:var(--lead)}
 .tool.on svg{color:var(--lead)}
 
+#peek{
+  position:absolute;right:max(12px, env(safe-area-inset-right));top:50%;transform:translateY(-50%);
+  width:64px;height:64px;border-radius:50%;border:2px solid rgba(255,255,255,.35);
+  background:rgba(22,23,27,.72);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:10px;font-weight:700;
+  touch-action:none;-webkit-touch-callout:none
+}
+#peek svg{width:22px;height:22px}
+#stage.peek #peek{background:var(--lead);color:var(--lead-ink);border-color:var(--lead)}
+#zoomBadge{position:absolute;left:max(12px, env(safe-area-inset-left));top:50%;transform:translateY(-50%)}
 #showUi{position:absolute;right:max(12px, env(safe-area-inset-right));bottom:max(14px, env(safe-area-inset-bottom));opacity:.55}
 #lockBadge{
   position:absolute;left:50%;top:max(64px, calc(env(safe-area-inset-top) + 58px));transform:translateX(-50%);
-  background:rgba(22,23,27,.8);padding:6px 12px;border-radius:99px;font-size:12px;display:flex;gap:6px;align-items:center;pointer-events:none
+  background:rgba(22,23,27,.8);padding:6px 12px;border-radius:99px;font-size:12px;display:flex;gap:6px;align-items:center;pointer-events:none;white-space:nowrap
 }
 #lockBadge svg{width:14px;height:14px}
+
+#tips{position:absolute;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:flex-end;justify-content:center;z-index:5}
+#tips .sheet{
+  width:100%;max-width:560px;max-height:85%;overflow:auto;background:var(--graphite-2);border-radius:18px 18px 0 0;
+  padding:20px max(18px, env(safe-area-inset-right)) max(20px, env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left));
+  display:grid;gap:14px
+}
+#tips h3{margin:0;font-family:var(--display);font-size:20px}
+#tips ul{margin:0;padding-left:18px;display:grid;gap:10px;line-height:1.45;color:var(--ink)}
+#tips li b{color:var(--lead)}
+
 #toast{
   position:fixed;left:50%;top:max(70px, calc(env(safe-area-inset-top) + 64px));transform:translate(-50%,-10px);
-  background:var(--ink);color:var(--graphite);padding:10px 16px;border-radius:99px;font-weight:600;font-size:14px;
-  opacity:0;transition:opacity .2s, transform .2s;pointer-events:none;z-index:9;max-width:90%;text-align:center
+  background:var(--ink);color:var(--graphite);padding:10px 16px;border-radius:16px;font-weight:600;font-size:14px;
+  opacity:0;transition:opacity .2s, transform .2s;pointer-events:none;z-index:9;max-width:90%;text-align:center;line-height:1.35
 }
 #toast.show{opacity:1;transform:translate(-50%,0)}
 @media (prefers-reduced-motion:reduce){#toast{transition:none}}
@@ -180,9 +212,10 @@ input[type=range]{flex:1;min-width:0;accent-color:var(--lead);height:30px}
   <section>
     <h2>Cómo se usa</h2>
     <ol class="steps">
-      <li><div><b>Sostén el celular sobre la hoja</b><small>Apóyalo en un vaso, una pila de libros o un soporte, a unos 25–30 cm del papel.</small></div></li>
-      <li><div><b>Acomoda la imagen</b><small>Arrastra con un dedo. Con dos dedos la agrandas, achicas o giras. Luego toca el candado para que no se mueva.</small></div></li>
-      <li><div><b>Baja la opacidad y dibuja</b><small>Mira la pantalla y sigue las líneas con el lápiz sobre el papel real.</small></div></li>
+      <li><div><b>Pon el celular paralelo a la hoja</b><small>Justo encima del centro del papel, sin inclinarlo. Apóyalo en un vaso, libros o un soporte. Mientras más alto, menos se deforma la imagen.</small></div></li>
+      <li><div><b>Acomoda la imagen y bloquéala</b><small>Arrastra con un dedo; con dos la agrandas o giras. Si la hoja se ve chueca, usa <b>Perspectiva</b> y calza las 4 esquinas. Luego toca el candado.</small></div></li>
+      <li><div><b>Dibuja primero las marcas</b><small>Activa <b>Marcas</b> y cópialas en tu hoja. Si dejan de coincidir, el celular se movió: vuelve a alinearlas.</small></div></li>
+      <li><div><b>Calca y revisa</b><small>Mantén presionado <b>Ver hoja</b> para ver solo tu dibujo y confirmar en qué línea vas.</small></div></li>
     </ol>
   </section>
 
@@ -191,9 +224,16 @@ input[type=range]{flex:1;min-width:0;accent-color:var(--lead);height:30px}
 
 <!-- ===== EDITOR ===== -->
 <section id="stage" hidden>
-  <video id="video" playsinline muted autoplay></video>
+  <div id="world">
+    <video id="video" playsinline muted autoplay></video>
+    <canvas id="ov"></canvas>
+  </div>
   <div id="gest"></div>
-  <canvas id="ov"></canvas>
+  <svg id="quad" hidden><polygon points=""/></svg>
+  <button class="handle" type="button" data-h="0" aria-label="Esquina superior izquierda" hidden></button>
+  <button class="handle" type="button" data-h="1" aria-label="Esquina superior derecha" hidden></button>
+  <button class="handle" type="button" data-h="2" aria-label="Esquina inferior derecha" hidden></button>
+  <button class="handle" type="button" data-h="3" aria-label="Esquina inferior izquierda" hidden></button>
 
   <div id="camMsg" hidden>
     <p id="camMsgText"></p>
@@ -201,7 +241,7 @@ input[type=range]{flex:1;min-width:0;accent-color:var(--lead);height:30px}
     <button class="btn" id="retryCam" type="button">Reintentar cámara</button>
   </div>
 
-  <div id="lockBadge" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>Imagen bloqueada</div>
+  <div id="lockBadge" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>Bloqueada · dos dedos para hacer zoom</div>
 
   <div class="bar ui" id="top">
     <button class="ic" id="back" type="button" aria-label="Volver">
@@ -212,6 +252,7 @@ input[type=range]{flex:1;min-width:0;accent-color:var(--lead);height:30px}
       <button type="button" id="mLight" aria-pressed="false">Luz</button>
     </div>
     <span class="spacer"></span>
+    <button class="ic" id="lens" type="button" aria-label="Cambiar lente" hidden>1x</button>
     <button class="ic" id="torch" type="button" aria-label="Linterna" hidden>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2h8v5l-2 4v11h-4V11L8 7z"/><path d="M8 7h8"/></svg>
     </button>
@@ -246,13 +287,21 @@ input[type=range]{flex:1;min-width:0;accent-color:var(--lead);height:30px}
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path id="lockShackle" d="M8 11V7a4 4 0 0 1 7.5-2"/></svg>
         <span>Bloquear</span>
       </button>
-      <button class="tool" id="flip" type="button">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18"/><path d="M8 7 3 17h5z"/><path d="M16 7l5 10h-5z"/></svg>
-        <span>Espejo</span>
+      <button class="tool" id="persp" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M6 5h12l3 14H3z"/><circle cx="6" cy="5" r="1.6" fill="currentColor"/><circle cx="18" cy="5" r="1.6" fill="currentColor"/><circle cx="21" cy="19" r="1.6" fill="currentColor"/><circle cx="3" cy="19" r="1.6" fill="currentColor"/></svg>
+        <span>Perspectiva</span>
+      </button>
+      <button class="tool" id="marks" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 8V3h5M16 3h5v5M21 16v5h-5M8 21H3v-5M12 9v6M9 12h6"/></svg>
+        <span>Marcas</span>
       </button>
       <button class="tool" id="grid" type="button">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M15 3v18M3 9h18M3 15h18"/></svg>
         <span>Cuadrícula</span>
+      </button>
+      <button class="tool" id="flip" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18"/><path d="M8 7 3 17h5z"/><path d="M16 7l5 10h-5z"/></svg>
+        <span>Espejo</span>
       </button>
       <button class="tool" id="rot90" type="button">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg>
@@ -262,12 +311,39 @@ input[type=range]{flex:1;min-width:0;accent-color:var(--lead);height:30px}
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg>
         <span>Centrar</span>
       </button>
+      <button class="tool" id="help" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14"/><circle cx="12" cy="17.2" r=".6" fill="currentColor"/></svg>
+        <span>Consejos</span>
+      </button>
     </div>
   </div>
 
-  <button class="ic" id="showUi" type="button" aria-label="Mostrar controles" hidden>
+  <button id="peek" type="button" aria-label="Mantén presionado para ver solo tu hoja">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>
+    Ver hoja
   </button>
+  <button class="ic" id="zoomBadge" type="button" aria-label="Quitar zoom" hidden>1x</button>
+
+  <button class="ic" id="showUi" type="button" aria-label="Mostrar controles" hidden>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15l8-8 8 8"/></svg>
+  </button>
+
+  <div id="tips" hidden>
+    <div class="sheet" role="dialog" aria-labelledby="tipsTitle">
+      <h3 id="tipsTitle">Para que la imagen calce con tu hoja</h3>
+      <ul>
+        <li><b>Celular paralelo a la hoja.</b> Si está inclinado, la cámara ve el papel deformado (más chico arriba, más grande abajo) y las líneas parecen estar en otro lugar.</li>
+        <li><b>Más alto y con lente Tele.</b> Sube el celular y toca el botón de lente arriba. Desde lejos la imagen se deforma menos, enfoca mejor y tu mano tapa menos.</li>
+        <li><b>Perspectiva.</b> Si no puedes evitar la inclinación, arrastra las 4 esquinas amarillas hasta que coincidan con las esquinas de tu hoja.</li>
+        <li><b>Marcas primero.</b> Dibuja las esquinas y la cruz central en tu hoja. Si en algún momento no coinciden, el celular o la hoja se movieron.</li>
+        <li><b>Ver hoja.</b> Mantén presionado el botón redondo de la derecha para ocultar la imagen y ver en qué línea vas realmente.</li>
+        <li><b>Zoom.</b> Con la imagen bloqueada, usa dos dedos para acercarte a la zona en la que dibujas. La imagen y la cámara se agrandan juntas.</li>
+        <li><b>Buena luz.</b> Con poca luz la cámara desenfoca. Usa la linterna si aparece el botón, o una lámpara de lado para no hacer sombra.</li>
+        <li><b>Mira la punta del lápiz.</b> La punta está sobre el papel, pero tu mano está más arriba. Guíate por donde toca la punta, no por la mano.</li>
+      </ul>
+      <button class="btn primary" id="tipsClose" type="button">Entendido</button>
+    </div>
+  </div>
 </section>
 
 <div id="toast" role="status" aria-live="polite"></div>
@@ -276,23 +352,28 @@ input[type=range]{flex:1;min-width:0;accent-color:var(--lead);height:30px}
 (() => {
 'use strict';
 const $ = s => document.querySelector(s);
-const home = $('#home'), stage = $('#stage'), video = $('#video'), ov = $('#ov'), gest = $('#gest');
+const $$ = s => document.querySelectorAll(s);
+const home = $('#home'), stage = $('#stage'), world = $('#world'), video = $('#video'), ov = $('#ov'), gest = $('#gest');
 const ctx = ov.getContext('2d', { willReadFrequently: true });
+const handles = [...$$('.handle')];
 
 const st = {
-  x: 0, y: 0, s: 1, r: 0, flip: false, locked: false,
-  opacity: 50, mode: 'trazo', intensity: 45, color: '#111111', grid: false, light: false, ui: true
+  q: null,                 // 4 esquinas de la imagen (sup-izq, sup-der, inf-der, inf-izq), en coordenadas del "mundo"
+  flip: false, locked: false, persp: false, marks: false, grid: false,
+  opacity: 50, mode: 'trazo', intensity: 45, color: '#111111', light: false, ui: true,
+  deviceId: null
 };
-let src = null;        // imagen original
-let stream = null, wakeLock = null, torchOn = false;
+const view = { z: 1, x: 0, y: 0 };   // zoom de la vista (cámara + imagen juntas)
+let src = null;
+let stream = null, wakeLock = null, torchOn = false, lenses = [];
 
 /* ---------- utilidades ---------- */
 let toastT;
-function toast(msg) {
+function toast(msg, ms) {
   const t = $('#toast'); t.textContent = msg; t.classList.add('show');
-  clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 1800);
+  clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), ms || 2000);
 }
-function save() { try { localStorage.setItem('calco', JSON.stringify({ opacity: st.opacity, color: st.color })); } catch (e) {} }
+function save() { try { localStorage.setItem('calco', JSON.stringify({ opacity: st.opacity, color: st.color, deviceId: st.deviceId })); } catch (e) {} }
 try { Object.assign(st, JSON.parse(localStorage.getItem('calco') || '{}')); } catch (e) {}
 
 /* ---------- ejemplos (dibujos de línea en SVG) ---------- */
@@ -310,7 +391,7 @@ const EXAMPLES = [
   { name: 'Líneas', svg: svgWrap('<path d="M40 50H360M40 95H360M40 140H360"/><path d="M60 175V265M116 175V265M172 175V265M228 175V265M284 175V265M340 175V265"/><path d="M40 360L80 295L120 360L160 295L200 360L240 295L280 360L320 295L360 360"/>') },
   { name: 'Círculos', svg: svgWrap('<circle cx="110" cy="110" r="65"/><circle cx="290" cy="110" r="65"/><circle cx="290" cy="110" r="32"/><ellipse cx="200" cy="290" rx="160" ry="70"/><ellipse cx="200" cy="290" rx="80" ry="34"/>') },
   { name: 'Espiral', svg: svgWrap(spiral()) },
-  { name: 'Cubo', svg: svgWrap('<path d="M90 150H250V310H90Z"/><path d="M150 90H310V250H150Z" stroke-dasharray="0"/><path d="M90 150L150 90M250 150L310 90M250 310L310 250M90 310L150 250"/>') },
+  { name: 'Cubo', svg: svgWrap('<path d="M90 150H250V310H90Z"/><path d="M150 90H310V250H150Z"/><path d="M90 150L150 90M250 150L310 90M250 310L310 250M90 310L150 250"/>') },
   { name: 'Flor', svg: svgWrap(petals + '<circle cx="200" cy="150" r="28"/><path d="M200 178C194 250 206 300 200 385"/><path d="M200 305C238 272 278 282 304 258C284 302 240 314 200 305Z"/><path d="M200 335C165 310 130 318 104 300C126 338 168 345 200 335Z"/>') },
   { name: 'Pez', svg: svgWrap('<path d="M60 200C125 105 270 105 320 200C270 295 125 295 60 200Z"/><path d="M320 200L380 145L368 200L380 255Z"/><circle cx="122" cy="186" r="9"/><path d="M160 145C182 178 182 222 160 255"/><path d="M200 122C218 92 258 96 270 138"/><path d="M205 278C222 300 250 300 262 268"/><path d="M200 175Q215 190 200 205M230 175Q245 190 230 205M260 175Q275 190 260 205M215 205Q230 220 215 235M245 205Q260 220 245 235M215 145Q230 160 215 175M245 145Q260 160 245 175"/>') },
   { name: 'Taza', svg: svgWrap('<ellipse cx="180" cy="135" rx="100" ry="25"/><path d="M80 135L100 300C112 330 248 330 260 300L280 135"/><path d="M272 175C352 165 352 272 262 262"/><path d="M40 318C40 352 320 352 320 318"/><path d="M150 95C135 75 165 60 150 38M200 95C185 75 215 60 200 38"/>') },
@@ -345,21 +426,24 @@ function loadImage(url, mode) {
 
 /* ---------- procesamiento ---------- */
 const MAX = 1400;
-let work = null; // ImageData de la imagen escalada (para no redibujar el original)
+let work = null; // ImageData de la imagen escalada
 function prepare() {
   const k = Math.min(1, MAX / Math.max(src.naturalWidth, src.naturalHeight));
   ov.width = Math.max(1, Math.round(src.naturalWidth * k));
   ov.height = Math.max(1, Math.round(src.naturalHeight * k));
+  ov.style.width = ov.width + 'px'; ov.style.height = ov.height + 'px';
   ctx.clearRect(0, 0, ov.width, ov.height);
   ctx.drawImage(src, 0, 0, ov.width, ov.height);
   try { work = ctx.getImageData(0, 0, ov.width, ov.height); }
   catch (e) { work = null; st.mode = 'foto'; toast('Esta imagen solo se puede mostrar como Foto'); }
 }
 function hexRgb(h) { const n = parseInt(h.slice(1), 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; }
+function guideColor(a) { return st.color === '#e8402f' ? `rgba(31,111,255,${a})` : `rgba(232,64,47,${a})`; }
 
 function render() {
-  if (!work) { ctx.clearRect(0, 0, ov.width, ov.height); ctx.drawImage(src, 0, 0, ov.width, ov.height); return; }
-  const w = ov.width, h = ov.height, n = w * h, s = work.data;
+  const w = ov.width, h = ov.height;
+  if (!work) { ctx.clearRect(0, 0, w, h); ctx.drawImage(src, 0, 0, w, h); drawGuides(w, h); return; }
+  const n = w * h, s = work.data;
   if (st.mode === 'foto') {
     ctx.putImageData(work, 0, 0);
   } else {
@@ -400,83 +484,199 @@ function render() {
     }
     ctx.putImageData(out, 0, 0);
   }
-  if (st.grid) drawGrid(w, h);
+  drawGuides(w, h);
 }
-function drawGrid(w, h) {
-  const cells = 6, step = Math.max(w, h) / cells;
+function drawGuides(w, h) {
+  const big = Math.max(w, h);
   ctx.save();
-  ctx.lineWidth = Math.max(1.5, Math.max(w, h) / 500);
-  ctx.strokeStyle = st.color === '#1f6fff' ? 'rgba(232,64,47,.75)' : 'rgba(31,111,255,.75)';
-  ctx.beginPath();
-  for (let x = step; x < w - 1; x += step) { ctx.moveTo(x, 0); ctx.lineTo(x, h); }
-  for (let y = step; y < h - 1; y += step) { ctx.moveTo(0, y); ctx.lineTo(w, y); }
-  ctx.rect(1, 1, w - 2, h - 2);
-  ctx.stroke();
+  ctx.lineCap = 'round';
+  if (st.grid) {
+    const step = big / 6;
+    ctx.lineWidth = Math.max(1.5, big / 500);
+    ctx.strokeStyle = guideColor(.7);
+    ctx.beginPath();
+    for (let x = step; x < w - 1; x += step) { ctx.moveTo(x, 0); ctx.lineTo(x, h); }
+    for (let y = step; y < h - 1; y += step) { ctx.moveTo(0, y); ctx.lineTo(w, y); }
+    ctx.rect(1, 1, w - 2, h - 2);
+    ctx.stroke();
+  }
+  if (st.marks) {
+    // esquinas en L y cruz central: se dibujan primero en la hoja para comprobar la alineación
+    const L = Math.min(w, h) * 0.09, m = Math.max(3, big / 220);
+    ctx.lineWidth = Math.max(3, big / 160);
+    ctx.strokeStyle = guideColor(1);
+    ctx.beginPath();
+    ctx.moveTo(m, m + L); ctx.lineTo(m, m); ctx.lineTo(m + L, m);
+    ctx.moveTo(w - m - L, m); ctx.lineTo(w - m, m); ctx.lineTo(w - m, m + L);
+    ctx.moveTo(w - m, h - m - L); ctx.lineTo(w - m, h - m); ctx.lineTo(w - m - L, h - m);
+    ctx.moveTo(m + L, h - m); ctx.lineTo(m, h - m); ctx.lineTo(m, h - m - L);
+    ctx.moveTo(w / 2 - L / 2, h / 2); ctx.lineTo(w / 2 + L / 2, h / 2);
+    ctx.moveTo(w / 2, h / 2 - L / 2); ctx.lineTo(w / 2, h / 2 + L / 2);
+    ctx.stroke();
+  }
   ctx.restore();
 }
 let rq = 0;
 function scheduleRender() { if (rq) return; rq = requestAnimationFrame(() => { rq = 0; render(); }); }
 
-/* ---------- transformaciones ---------- */
-function fit() {
+/* ---------- geometría: la imagen se dibuja sobre 4 esquinas libres (permite corregir perspectiva) ---------- */
+function fitQuad() {
   const vw = innerWidth, vh = innerHeight;
   const ar = ov.width / ov.height;
-  let w = vw * 0.86, hgt = w / ar;
-  if (hgt > vh * 0.62) { hgt = vh * 0.62; w = hgt * ar; }
-  ov.style.width = w + 'px'; ov.style.height = hgt + 'px';
-  ov.style.marginLeft = -w / 2 + 'px'; ov.style.marginTop = -hgt / 2 + 'px';
+  let w = vw * 0.86, h = w / ar;
+  if (h > vh * 0.6) { h = vh * 0.6; w = h * ar; }
+  const cx = vw / 2, cy = vh / 2 - (st.ui ? 60 : 0);
+  st.q = [
+    { x: cx - w / 2, y: cy - h / 2 }, { x: cx + w / 2, y: cy - h / 2 },
+    { x: cx + w / 2, y: cy + h / 2 }, { x: cx - w / 2, y: cy + h / 2 }
+  ];
 }
-function applyT() {
-  ov.style.transform = `translate(${st.x}px, ${st.y}px) rotate(${st.r}rad) scale(${st.flip ? -st.s : st.s}, ${st.s})`;
-  ov.style.opacity = st.opacity / 100;
+// Homografía del cuadrado unitario a un cuadrilátero (Heckbert)
+function squareToQuad(p) {
+  const [p0, p1, p2, p3] = p;
+  const dx1 = p1.x - p2.x, dx2 = p3.x - p2.x, dx3 = p0.x - p1.x + p2.x - p3.x;
+  const dy1 = p1.y - p2.y, dy2 = p3.y - p2.y, dy3 = p0.y - p1.y + p2.y - p3.y;
+  let a, b, c, d, e, f, g, h;
+  if (Math.abs(dx3) < 1e-9 && Math.abs(dy3) < 1e-9) {
+    a = p1.x - p0.x; b = p3.x - p0.x; c = p0.x; d = p1.y - p0.y; e = p3.y - p0.y; f = p0.y; g = 0; h = 0;
+  } else {
+    const den = dx1 * dy2 - dx2 * dy1 || 1e-9;
+    g = (dx3 * dy2 - dx2 * dy3) / den;
+    h = (dx1 * dy3 - dx3 * dy1) / den;
+    a = p1.x - p0.x + g * p1.x; b = p3.x - p0.x + h * p3.x; c = p0.x;
+    d = p1.y - p0.y + g * p1.y; e = p3.y - p0.y + h * p3.y; f = p0.y;
+  }
+  return { a, b, c, d, e, f, g, h };
 }
-function resetPos() { st.x = 0; st.y = st.ui ? -60 : 0; st.s = 1; st.r = 0; applyT(); }
+const toScreen = p => ({ x: p.x * view.z + view.x, y: p.y * view.z + view.y });
+const toWorld = p => ({ x: (p.x - view.x) / view.z, y: (p.y - view.y) / view.z });
 
-/* gestos: 1 dedo mueve, 2 dedos escalan y giran */
+function applyT() {
+  const q = st.q, w = ov.width, hh = ov.height;
+  const H = squareToQuad(st.flip ? [q[1], q[0], q[3], q[2]] : q);
+  const a = H.a / w, b = H.b / hh, g = H.g / w, h = H.h / hh;
+  ov.style.transform = `matrix3d(${a},${H.d / w},0,${g},${b},${H.e / hh},0,${h},0,0,1,0,${H.c},${H.f},0,1)`;
+  ov.style.opacity = st.opacity / 100;
+  world.style.transform = `translate(${view.x}px, ${view.y}px) scale(${view.z})`;
+  const zb = $('#zoomBadge');
+  zb.hidden = view.z < 1.02; zb.textContent = view.z.toFixed(1) + 'x';
+  const show = st.persp && !st.locked && st.ui;
+  $('#quad').hidden = !show;
+  handles.forEach((el, i) => {
+    el.hidden = !show;
+    if (show) { const s = toScreen(q[i]); el.style.transform = `translate(${s.x}px, ${s.y}px)`; }
+  });
+  if (show) $('#quad polygon').setAttribute('points', q.map(p => { const s = toScreen(p); return s.x + ',' + s.y; }).join(' '));
+}
+function resetView() { view.z = 1; view.x = 0; view.y = 0; }
+function clampView() {
+  view.z = Math.min(5, Math.max(1, view.z));
+  const vw = innerWidth, vh = innerHeight;
+  view.x = Math.min(0, Math.max(vw - vw * view.z, view.x));
+  view.y = Math.min(0, Math.max(vh - vh * view.z, view.y));
+}
+
+/* gestos: desbloqueada mueve/escala/gira la imagen; bloqueada hace zoom a la vista */
 const ptrs = new Map();
 let g0 = null;
 function snapshot() {
-  const pts = [...ptrs.values()];
-  if (pts.length === 1) return { mode: 1, px: pts[0].x, py: pts[0].y, x: st.x, y: st.y };
-  const [a, b] = pts;
-  return {
-    mode: 2, x: st.x, y: st.y, s: st.s, r: st.r,
-    d: Math.hypot(b.x - a.x, b.y - a.y) || 1, ang: Math.atan2(b.y - a.y, b.x - a.x),
-    mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2
-  };
+  const pts = [...ptrs.values()].slice(0, 2);
+  const base = { n: pts.length, q: st.q.map(p => ({ ...p })), z: view.z, vx: view.x, vy: view.y, pts };
+  if (pts.length === 2) {
+    const [a, b] = pts;
+    base.d = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+    base.ang = Math.atan2(b.y - a.y, b.x - a.x);
+    base.m = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+  }
+  return base;
 }
+let lockHintShown = false;
 gest.addEventListener('pointerdown', e => {
-  if (st.locked) { if (ptrs.size === 0) toast('Imagen bloqueada · toca el candado para moverla'); return; }
   gest.setPointerCapture(e.pointerId);
   ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
-  if (ptrs.size <= 2) g0 = snapshot();
+  if (st.locked && !lockHintShown) { lockHintShown = true; toast('Imagen bloqueada · con dos dedos haces zoom'); }
+  g0 = snapshot();
 });
 gest.addEventListener('pointermove', e => {
-  if (!ptrs.has(e.pointerId) || st.locked) return;
+  if (!ptrs.has(e.pointerId) || !g0) return;
   ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
-  const pts = [...ptrs.values()];
-  if (!g0) return;
-  if (g0.mode === 1 && pts.length === 1) {
-    st.x = g0.x + pts[0].x - g0.px; st.y = g0.y + pts[0].y - g0.py;
-  } else if (g0.mode === 2 && pts.length >= 2) {
+  const pts = [...ptrs.values()].slice(0, 2);
+  if (pts.length !== g0.n) return;
+  if (st.locked) {
+    if (g0.n === 1) {
+      if (g0.z <= 1.01) return;
+      view.x = g0.vx + pts[0].x - g0.pts[0].x; view.y = g0.vy + pts[0].y - g0.pts[0].y;
+    } else {
+      const [a, b] = pts;
+      const d = Math.hypot(b.x - a.x, b.y - a.y), m = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+      view.z = Math.min(5, Math.max(1, g0.z * d / g0.d));
+      const wx = (g0.m.x - g0.vx) / g0.z, wy = (g0.m.y - g0.vy) / g0.z;
+      view.x = m.x - wx * view.z; view.y = m.y - wy * view.z;
+    }
+    clampView();
+  } else if (g0.n === 1) {
+    const dx = (pts[0].x - g0.pts[0].x) / view.z, dy = (pts[0].y - g0.pts[0].y) / view.z;
+    st.q = g0.q.map(p => ({ x: p.x + dx, y: p.y + dy }));
+  } else {
+    // semejanza alrededor de los dedos
     const [a, b] = pts;
-    const d = Math.hypot(b.x - a.x, b.y - a.y), ang = Math.atan2(b.y - a.y, b.x - a.x);
-    st.s = Math.min(12, Math.max(0.1, g0.s * d / g0.d));
-    st.r = g0.r + (ang - g0.ang);
-    st.x = g0.x + (a.x + b.x) / 2 - g0.mx; st.y = g0.y + (a.y + b.y) / 2 - g0.my;
+    const k = Math.hypot(b.x - a.x, b.y - a.y) / g0.d;
+    const t = Math.atan2(b.y - a.y, b.x - a.x) - g0.ang, cos = Math.cos(t), sin = Math.sin(t);
+    const m0 = toWorld(g0.m), m = toWorld({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+    st.q = g0.q.map(p => {
+      const rx = (p.x - m0.x) * k, ry = (p.y - m0.y) * k;
+      return { x: m.x + rx * cos - ry * sin, y: m.y + rx * sin + ry * cos };
+    });
   }
   applyT();
 });
 function endPtr(e) {
   if (!ptrs.delete(e.pointerId)) return;
   g0 = ptrs.size ? snapshot() : null;
+  if (st.locked && view.z < 1.05 && !ptrs.size) { resetView(); applyT(); }
 }
 gest.addEventListener('pointerup', endPtr);
 gest.addEventListener('pointercancel', endPtr);
+
+/* esquinas de perspectiva */
+handles.forEach((el, i) => {
+  let off = null;
+  el.addEventListener('pointerdown', e => {
+    e.stopPropagation(); el.setPointerCapture(e.pointerId);
+    const w = toWorld({ x: e.clientX, y: e.clientY });
+    off = { x: st.q[i].x - w.x, y: st.q[i].y - w.y };
+  });
+  el.addEventListener('pointermove', e => {
+    if (!off) return;
+    const w = toWorld({ x: e.clientX, y: e.clientY });
+    st.q[i] = { x: w.x + off.x, y: w.y + off.y };
+    applyT();
+  });
+  const end = () => { off = null; };
+  el.addEventListener('pointerup', end);
+  el.addEventListener('pointercancel', end);
+});
+
 document.addEventListener('gesturestart', e => e.preventDefault());
 document.addEventListener('dblclick', e => e.preventDefault(), { passive: false });
 
+/* ver solo la hoja mientras se mantiene presionado */
+const peek = $('#peek');
+peek.addEventListener('pointerdown', e => { e.preventDefault(); peek.setPointerCapture(e.pointerId); stage.classList.add('peek'); });
+['pointerup', 'pointercancel', 'lostpointercapture'].forEach(ev => peek.addEventListener(ev, () => stage.classList.remove('peek')));
+peek.addEventListener('contextmenu', e => e.preventDefault());
+
+$('#zoomBadge').addEventListener('click', () => { resetView(); applyT(); });
+
 /* ---------- cámara ---------- */
+const LENS = [
+  { re: /ultra/i, short: '0.5x', name: 'Gran angular' },
+  { re: /tele/i, short: 'Tele', name: 'Teleobjetivo' },
+  { re: /dual|triple/i, short: 'Auto', name: 'Automática' },
+  { re: /./, short: '1x', name: 'Normal' }
+];
+const lensInfo = label => LENS.find(l => l.re.test(label || '')) || LENS[3];
+
 async function startCamera() {
   hideCamMsg();
   if (stream) { video.play().catch(() => {}); return; }
@@ -484,15 +684,26 @@ async function startCamera() {
     showCamMsg('Este navegador no permite usar la cámara aquí. Abre la app desde Safari con una dirección https://.');
     return;
   }
+  const size = { width: { ideal: 3840 }, height: { ideal: 2160 } };
+  const want = st.deviceId
+    ? { deviceId: { exact: st.deviceId }, ...size }
+    : { facingMode: { ideal: 'environment' }, ...size };
   try {
-    stream = await navigator.mediaDevices.getUserMedia({
-      audio: false,
-      video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } }
-    });
+    try { stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: want }); }
+    catch (err) {
+      if (!st.deviceId || err.name === 'NotAllowedError') throw err;
+      st.deviceId = null; save();   // el lente guardado ya no existe
+      stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: { ideal: 'environment' }, ...size } });
+    }
     if (st.light || stage.hidden) { stopCamera(); return; }
     video.srcObject = stream;
     await video.play().catch(() => {});
+    const track = stream.getVideoTracks()[0];
+    // enfoque continuo donde el navegador lo permita
+    try { const c = track.getCapabilities ? track.getCapabilities() : {};
+      if (c.focusMode && c.focusMode.includes('continuous')) await track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] }); } catch (e) {}
     setupTorch();
+    listLenses();
   } catch (err) {
     stream = null;
     const denied = err && (err.name === 'NotAllowedError' || err.name === 'SecurityError');
@@ -513,6 +724,29 @@ function setupTorch() {
   const caps = track && track.getCapabilities ? track.getCapabilities() : {};
   $('#torch').hidden = !caps.torch;
 }
+async function listLenses() {
+  try {
+    const devs = await navigator.mediaDevices.enumerateDevices();
+    lenses = devs.filter(d => d.kind === 'videoinput' && d.deviceId && !/front|frontal|delanter|facetime/i.test(d.label));
+  } catch (e) { lenses = []; }
+  const btn = $('#lens');
+  btn.hidden = lenses.length < 2;
+  const track = stream && stream.getVideoTracks()[0];
+  const cur = track && track.getSettings ? track.getSettings().deviceId : null;
+  const d = lenses.find(l => l.deviceId === cur);
+  btn.textContent = lensInfo(d ? d.label : track && track.label).short;
+}
+$('#lens').addEventListener('click', async () => {
+  if (lenses.length < 2) return;
+  const track = stream && stream.getVideoTracks()[0];
+  const cur = track && track.getSettings ? track.getSettings().deviceId : st.deviceId;
+  const i = lenses.findIndex(l => l.deviceId === cur);
+  const next = lenses[(i + 1) % lenses.length];
+  st.deviceId = next.deviceId; save();
+  stopCamera(); await startCamera();
+  const info = lensInfo(next.label);
+  toast(info.short === 'Tele' ? 'Teleobjetivo: aleja el celular de la hoja, se deforma menos' : 'Lente: ' + info.name);
+});
 $('#torch').addEventListener('click', async () => {
   const track = stream && stream.getVideoTracks()[0];
   if (!track) return;
@@ -545,7 +779,7 @@ function setLight(on) {
   $('#mCam').setAttribute('aria-pressed', String(!on));
   $('#mLight').setAttribute('aria-pressed', String(on));
   if (on) {
-    stopCamera(); hideCamMsg();
+    stopCamera(); hideCamMsg(); $('#lens').hidden = true;
     if (st.opacity < 70) { st.opacity = 100; syncControls(); applyT(); }
     toast('Sube el brillo al máximo y pon la hoja encima');
   } else {
@@ -557,8 +791,9 @@ $('#mLight').addEventListener('click', () => setLight(true));
 
 function openStage() {
   home.hidden = true; stage.hidden = false;
-  prepare(); fit(); render();
-  setUi(true); resetPos(); syncControls();
+  st.locked = false; st.persp = false; st.flip = false;
+  prepare(); render();
+  setUi(true); resetView(); fitQuad(); syncControls(); applyT();
   if (st.light) setLight(true); else startCamera();
   keepAwake();
 }
@@ -566,43 +801,71 @@ $('#back').addEventListener('click', () => {
   stopCamera();
   if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; }
   stage.hidden = true; home.hidden = false;
-  st.locked = false; syncControls();
 });
 
 /* ---------- controles ---------- */
 function syncControls() {
   $('#opacity').value = st.opacity; $('#opacityOut').textContent = st.opacity + '%';
   $('#intensity').value = st.intensity;
-  document.querySelectorAll('[data-mode]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mode === st.mode)));
-  document.querySelectorAll('[data-color]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.color === st.color)));
+  $$('[data-mode]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mode === st.mode)));
+  $$('[data-color]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.color === st.color)));
   $('#intRow').hidden = st.mode === 'foto';
   $('#lock').classList.toggle('on', st.locked);
   $('#lock span').textContent = st.locked ? 'Bloqueada' : 'Bloquear';
   $('#lockShackle').setAttribute('d', st.locked ? 'M8 11V7a4 4 0 0 1 8 0v4' : 'M8 11V7a4 4 0 0 1 7.5-2');
   $('#lockBadge').hidden = !st.locked || !st.ui;
+  $('#persp').classList.toggle('on', st.persp);
+  $('#marks').classList.toggle('on', st.marks);
   $('#flip').classList.toggle('on', st.flip);
   $('#grid').classList.toggle('on', st.grid);
 }
 $('#opacity').addEventListener('input', e => { st.opacity = +e.target.value; $('#opacityOut').textContent = st.opacity + '%'; applyT(); save(); });
 $('#intensity').addEventListener('input', e => { st.intensity = +e.target.value; scheduleRender(); });
-document.querySelectorAll('[data-mode]').forEach(b => b.addEventListener('click', () => { st.mode = b.dataset.mode; syncControls(); scheduleRender(); }));
-document.querySelectorAll('[data-color]').forEach(b => b.addEventListener('click', () => { st.color = b.dataset.color; syncControls(); scheduleRender(); save(); }));
-$('#lock').addEventListener('click', () => { st.locked = !st.locked; ptrs.clear(); g0 = null; syncControls(); toast(st.locked ? 'Imagen bloqueada' : 'Ya puedes mover la imagen'); });
+$$('[data-mode]').forEach(b => b.addEventListener('click', () => { st.mode = b.dataset.mode; syncControls(); scheduleRender(); }));
+$$('[data-color]').forEach(b => b.addEventListener('click', () => { st.color = b.dataset.color; syncControls(); scheduleRender(); save(); }));
+$('#lock').addEventListener('click', () => {
+  st.locked = !st.locked; ptrs.clear(); g0 = null;
+  if (st.locked) st.persp = false; else { resetView(); }
+  syncControls(); applyT();
+  toast(st.locked ? 'Imagen bloqueada · con dos dedos haces zoom' : 'Ya puedes mover la imagen');
+});
+$('#persp').addEventListener('click', () => {
+  st.persp = !st.persp;
+  if (st.persp && st.locked) { st.locked = false; resetView(); }
+  syncControls(); applyT();
+  if (st.persp) toast('Arrastra las 4 esquinas amarillas hasta las esquinas de tu hoja', 3200);
+});
+$('#marks').addEventListener('click', () => {
+  st.marks = !st.marks; syncControls(); scheduleRender();
+  if (st.marks) toast('Dibuja estas marcas en tu hoja primero. Si dejan de coincidir, realinea.', 3500);
+});
 $('#flip').addEventListener('click', () => { st.flip = !st.flip; applyT(); syncControls(); });
 $('#grid').addEventListener('click', () => { st.grid = !st.grid; syncControls(); scheduleRender(); });
-$('#rot90').addEventListener('click', () => { st.r = Math.round((st.r + Math.PI / 2) / (Math.PI / 2)) * (Math.PI / 2); applyT(); });
-$('#center').addEventListener('click', () => { if (st.locked) { toast('Desbloquea la imagen primero'); return; } resetPos(); });
+$('#rot90').addEventListener('click', () => {
+  if (st.locked) { toast('Desbloquea la imagen primero'); return; }
+  const c = st.q.reduce((s, p) => ({ x: s.x + p.x / 4, y: s.y + p.y / 4 }), { x: 0, y: 0 });
+  st.q = st.q.map(p => ({ x: c.x - (p.y - c.y), y: c.y + (p.x - c.x) }));
+  applyT();
+});
+$('#center').addEventListener('click', () => {
+  if (st.locked) { toast('Desbloquea la imagen primero'); return; }
+  resetView(); fitQuad(); applyT();
+});
+$('#help').addEventListener('click', () => { $('#tips').hidden = false; });
+$('#tipsClose').addEventListener('click', () => { $('#tips').hidden = true; });
+$('#tips').addEventListener('click', e => { if (e.target.id === 'tips') $('#tips').hidden = true; });
 
 function setUi(on) {
   st.ui = on;
-  document.querySelectorAll('#stage .ui').forEach(el => el.hidden = !on);
+  $$('#stage .ui').forEach(el => el.hidden = !on);
   $('#showUi').hidden = on;
   syncControls();
+  if (st.q) applyT();
 }
 $('#hideUi').addEventListener('click', () => setUi(false));
 $('#showUi').addEventListener('click', () => setUi(true));
 
-addEventListener('resize', () => { if (!stage.hidden && work) fit(); });
+addEventListener('resize', () => { if (!stage.hidden && st.q) { clampView(); applyT(); } });
 
 /* ---------- PWA ---------- */
 if ('serviceWorker' in navigator && location.protocol === 'https:') {
